@@ -27,13 +27,16 @@ csv = "1"
 humantime = "2.1"
 directories-next = "2.0"
 itertools = "0.10"
+crossterm = "0.18"
+# dirs = "2.0"
+figment = { version = "0.10", features = ["toml"] }
 libc = "0.2"
 rand = "0.8"
 regex = "1"
 relative-path = "1.7"
 shellexpand = "2.1"
-termion = "1.5"
 unicode-segmentation = "1.9"
+serde = { version = "1.0", features = ["derive"] }
 
 [dependencies.rusqlite]
 version = "0.28"

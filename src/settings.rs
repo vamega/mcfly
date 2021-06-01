@@ -1,15 +1,21 @@
+
 use crate::shell_history;
 use clap::AppSettings;
 use clap::{crate_authors, crate_version, value_t};
 use clap::{App, Arg, SubCommand};
-use directories_next::{ProjectDirs, UserDirs};
+use dirs::home_dir;
+use figment::{
+    providers::{Format, Serialized, Toml},
+    Figment,
+};
+use serde::{Deserialize, Serialize};
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Mode {
     Add,
     Search,
@@ -18,32 +24,32 @@ pub enum Mode {
     Init,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum KeyScheme {
     Emacs,
     Vim,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum InitMode {
     Bash,
     Zsh,
     Fish,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum InterfaceView {
     Top,
     Bottom,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum ResultSort {
     Rank,
     LastRun,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum HistoryFormat {
     /// bash format - commands in plain text, one per line, with multi-line commands joined.
     /// HISTTIMEFORMAT is assumed to be empty.
@@ -61,7 +67,23 @@ pub enum HistoryFormat {
     Fish,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Colors {
+    pub menu_bg: String,
+    pub menu_fg: String,
+    pub menu_deleting_bg: String,
+    pub menu_deleting_fg: String,
+    pub bg: String,
+    pub fg: String,
+    pub prompt_fg: String,
+    pub highlight: String,
+    pub timing: String,
+    pub cursor_bg: String,
+    pub cursor_fg: String,
+    pub cursor_highlight: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Settings {
     pub mode: Mode,
     pub debug: bool,
@@ -77,7 +99,6 @@ pub struct Settings {
     pub old_dir: Option<String>,
     pub append_to_histfile: bool,
     pub refresh_training_cache: bool,
-    pub lightmode: bool,
     pub key_scheme: KeyScheme,
     pub history_format: HistoryFormat,
     pub limit: Option<i64>,
@@ -87,6 +108,7 @@ pub struct Settings {
     pub interface_view: InterfaceView,
     pub result_sort: ResultSort,
     pub disable_menu: bool,
+    pub colors: Colors,
 }
 
 impl Default for Settings {
@@ -105,8 +127,7 @@ impl Default for Settings {
             refresh_training_cache: false,
             append_to_histfile: false,
             debug: false,
-            fuzzy: 0,
-            lightmode: false,
+            fuzzy: false,
             key_scheme: KeyScheme::Emacs,
             history_format: HistoryFormat::Bash,
             limit: None,
@@ -116,6 +137,20 @@ impl Default for Settings {
             interface_view: InterfaceView::Top,
             result_sort: ResultSort::Rank,
             disable_menu: false,
+            colors: Colors {
+                menu_bg: "Blue".to_string(),
+                menu_fg: "White".to_string(),
+                menu_deleting_bg: "Red".to_string(),
+                menu_deleting_fg: "Cyan".to_string(),
+                bg: "Black".to_string(),
+                fg: "White".to_string(),
+                prompt_fg: "White".to_string(),
+                highlight: "Green".to_string(),
+                timing: "Blue".to_string(),
+                cursor_bg: "Grey".to_string(),
+                cursor_fg: "Black".to_string(),
+                cursor_highlight: "Green".to_string(),
+            },
         }
     }
 }
@@ -246,7 +281,11 @@ impl Settings {
             )
             .get_matches();
 
-        let mut settings = Settings::default();
+        let mut settings: Settings = Figment::from(Serialized::defaults(Settings::default()))
+            .merge(Toml::file(Settings::mcfly_config_path()))
+            .extract()
+            .unwrap();
+
         if matches.is_present("init") {
             settings.skip_environment_check = true;
         }
@@ -503,6 +542,10 @@ impl Settings {
         Settings::mcfly_base_path(cache_dir).join(PathBuf::from("training-cache.v1.csv"))
     }
 
+    pub fn mcfly_config_path() -> PathBuf {
+        Settings::storage_dir_path().join(PathBuf::from("mcfly.toml"))
+    }
+
     // Use ~/.mcfly only if it already exists, otherwise create 'mcfly' folder in XDG_DATA_DIR
     pub fn mcfly_db_path() -> PathBuf {
         let data_dir = Settings::mcfly_xdg_dir().data_dir().to_path_buf();
@@ -531,3 +574,4 @@ impl Settings {
         }
     }
 }
+
