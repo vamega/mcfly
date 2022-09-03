@@ -1,6 +1,6 @@
 # Mcfly sample configuration, to be placed in ~/.mcfly/mcfly.toml
 
-fuzzy = true
+fuzzy = 2
 results = 25
 key_scheme = "Vim" # Vim or Emacs (case-sensitive)
 
